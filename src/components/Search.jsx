@@ -1,8 +1,9 @@
 import React from 'react'
 import { useState } from 'react'
-import { collection, getDocs, query, where } from "firebase/firestore"
+import { collection, getDocs, setDoc, doc, getDoc, query, serverTimestamp, updateDoc, where } from "firebase/firestore"
 import { db } from "../firebase"
 import { AuthContext } from '../context/AuthContext'
+import { useContext } from 'react'
 
 const Search = () => {
 
@@ -14,7 +15,6 @@ const Search = () => {
 
   const handleSearch = async () => {
     const q = query(collection(db, "users"), where("displayName", "==", username))
-    console.log('here');
     try{
       const querySnapshot = await getDocs(q)
       console.log(querySnapshot)
@@ -34,14 +34,38 @@ const Search = () => {
   const handleSelect = async() => {
     const combinedId = currentUser.uid > user.uid ? currentUser.uid+user.uid : user.uid+currentUser.uid
     try {
-      const res = await getDocs(db, "chats", combinedId)
+      const res = await getDoc(doc(db, "chats", combinedId))
+      console.log(res)
 
+      console.log('here')
       if(!res.exists()){
         await setDoc(doc(db, "chats", combinedId), {messages: []});
+
+        await updateDoc(doc(db, "userChats", currentUser.uid), {
+          [combinedId+".userInfo"]: {
+            uid: user.uid,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          },
+          [combinedId+".date"]: serverTimestamp()
+        })
+
+        await updateDoc(doc(db, "userChats", user.uid), {
+          [combinedId+".userInfo"]: {
+            uid: currentUser.uid,
+            displayName: currentUser.displayName,
+            photoURL: currentUser.photoURL,
+          },
+          [combinedId+".date"]: serverTimestamp()
+        })
       }
-    } catch (error) {
+    } catch (err) {
+      console.error(err)
       setErr(true)
     }
+
+    setUser(null)
+    setUsername("")
   }
 
   return (
@@ -55,6 +79,7 @@ const Search = () => {
             setErr(false);
             setUsername(e.target.value);
           }}
+          value={username}
         />
       </div>
       { err && <span>User not found!</span>}

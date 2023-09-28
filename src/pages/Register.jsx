@@ -27,16 +27,11 @@ const Register = () => {
 
       const storageRef = ref(storage, displayName);
 
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        (error) => {
-          setErr(true);
-        },
-        () => {
-          console.log('here');
-          console.log(res.user);
-          getDownloadURL(uploadTask.snapshot.ref).then( async (downloadURL) => {
+      await uploadBytesResumable(storageRef, file).then(() => {
+        console.log('here');
+        console.log(res.user);
+        getDownloadURL(storageRef).then( async (downloadURL) => {
+          try{
             await updateProfile(res.user, {
               displayName,
               photoURL: downloadURL
@@ -47,15 +42,19 @@ const Register = () => {
               email,
               photoURL: downloadURL
             })
-
+  
             await setDoc(doc(db, "userChats", res.user.uid), {})
             navigate("/")
-          });
-        }
-      );
+          }catch(err){
+            console.log(err)
+            setErr(true)
+          }
+        });
+      })
 
 
     } catch (error) {
+      console.error(error)
       setErr(true);
     }
   
